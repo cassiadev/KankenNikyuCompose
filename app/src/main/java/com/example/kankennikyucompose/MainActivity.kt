@@ -14,7 +14,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.Icons.Filled
+import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.*
@@ -32,40 +35,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             KankenNikyuComposeTheme {
-//                MyApp()
-                KankenNikyuCompose()
+                MyApp()
             }
         }
-    }
-}
-
-@Composable
-fun KankenNikyuCompose() {
-    Scaffold(
-        topBar = {
-            Text(
-                text = "漢検2級",
-                style = MaterialTheme.typography.h3
-            )
-        }
-    ) { innerPadding ->
-        BodyContent(Modifier.padding(innerPadding))
-    }
-}
-
-@Composable
-fun BodyContent(modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(text = "ようこそ漢検2級ステップへ")
-        Text(text = "Beat Kanken Nikyu!")
-    }
-}
-
-@Preview
-@Composable
-fun KankenNikyuComposePreview() {
-    KankenNikyuComposeTheme {
-        KankenNikyuCompose()
     }
 }
 
@@ -78,6 +50,46 @@ private fun MyApp() {
 //        Greetings()
 //        Steps()
 //        PhotographerCard()
+        Question()
+    }
+}
+
+@Composable
+fun Question() {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(text = "問題")
+                },
+                actions = {
+                    IconButton(onClick = { /*TODO 아카이브에 해당 문제 등록*/ }) {
+                        Icon(Icons.Filled.Favorite, contentDescription = null)
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        BodyContent(
+            Modifier
+                .padding(innerPadding)
+                .padding(8.dp))
+    }
+}
+
+@Composable
+fun BodyContent(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(text = "次の線が引かれている部分の読みをひらがなで記せ。")
+        Text(text = "旦夕")
+    }
+}
+
+@Preview
+@Composable
+fun QuestionPreview() {
+    KankenNikyuComposeTheme() {
+        Question()
     }
 }
 
