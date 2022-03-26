@@ -12,7 +12,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.Icons.Filled
@@ -51,6 +53,19 @@ private fun MyApp() {
 //        Steps()
 //        PhotographerCard()
         Question()
+    }
+}
+
+@Composable
+fun SimpleList() {
+    // We save the scrolling position with this state that can also
+    // be used to programmatically scroll the list
+    val scrollState = rememberScrollState()
+
+    Column(Modifier.verticalScroll(scrollState)) {
+        repeat(24) {
+            Text(text = "Item #$it")
+        }
     }
 }
 
