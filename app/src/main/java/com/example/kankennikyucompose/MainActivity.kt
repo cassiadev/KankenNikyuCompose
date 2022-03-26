@@ -56,7 +56,8 @@ private fun MyApp() {
 //        Greetings()
 //        Steps()
 //        PhotographerCard()
-        Question()
+//        Question()
+        ScrollingList()
     }
 }
 
