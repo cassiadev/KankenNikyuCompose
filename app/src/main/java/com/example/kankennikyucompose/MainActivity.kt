@@ -8,9 +8,11 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons.Filled
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -30,9 +32,40 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             KankenNikyuComposeTheme {
-                MyApp()
+//                MyApp()
+                KankenNikyuCompose()
             }
         }
+    }
+}
+
+@Composable
+fun KankenNikyuCompose() {
+    Scaffold(
+        topBar = {
+            Text(
+                text = "漢検2級",
+                style = MaterialTheme.typography.h3
+            )
+        }
+    ) { innerPadding ->
+        BodyContent(Modifier.padding(innerPadding))
+    }
+}
+
+@Composable
+fun BodyContent(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(text = "ようこそ漢検2級ステップへ")
+        Text(text = "Beat Kanken Nikyu!")
+    }
+}
+
+@Preview
+@Composable
+fun KankenNikyuComposePreview() {
+    KankenNikyuComposeTheme {
+        KankenNikyuCompose()
     }
 }
 
@@ -42,8 +75,46 @@ private fun MyApp() {
     if (shouldShowOnboarding) {
         OnboardingScreen(onContinueClicked = {shouldShowOnboarding = false})
     } else {
-        Greetings()
+//        Greetings()
 //        Steps()
+//        PhotographerCard()
+    }
+}
+
+@Composable
+fun PhotographerCard(modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .clickable(onClick = {/* Igonoring onClkick */ })
+            .padding(16.dp)
+    )
+    {
+        Surface(
+            modifier = Modifier.size(30.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colors.onSurface.copy(alpha = 0.2f)
+        ) {
+            //Image goes here
+        }
+        Column(
+            modifier = Modifier
+                .padding(start = 8.dp)
+                .align(Alignment.CenterVertically)
+        ) {
+            Text(text = "cassiaさん", fontWeight = FontWeight.Bold)
+            // LocalContentAlpha is defining opacity level of its children
+            CompositionLocalProvider(LocalContentAlpha provides ContentAlpha.medium) {
+                Text("Last login: かなり前ではなかろう", style = MaterialTheme.typography.body2)
+            }
+        }
+    }
+}
+
+@Preview
+@Composable
+fun PhotographerCaradPreview() {
+    KankenNikyuComposeTheme() {
+        PhotographerCard()
     }
 }
 
