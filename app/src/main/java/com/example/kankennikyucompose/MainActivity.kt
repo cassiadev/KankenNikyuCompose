@@ -10,22 +10,42 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
+import androidx.compose.material.Button
+import androidx.compose.material.Card
+import androidx.compose.material.ContentAlpha
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.LocalContentAlpha
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedButton
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
+import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons.Filled
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.AlignmentLine
@@ -38,7 +58,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
-import coil.compose.rememberImagePainter
 import com.example.kankennikyucompose.ui.theme.KankenNikyuComposeTheme
 import kotlinx.coroutines.launch
 
@@ -164,8 +183,7 @@ fun MyCustomColumn(
 
 fun Modifier.firstBaselineToTop(
     firstBaseLineToTop: Dp
-) = this.then(
-    layout { measurable, constraints ->
+) = layout { measurable, constraints ->
         val placeable = measurable.measure(constraints)
 
         // Check the composable has a first baseline
@@ -180,7 +198,6 @@ fun Modifier.firstBaselineToTop(
             placeable.placeRelative(0, placeableY)
         }
     }
-)
 
 @Preview
 @Composable
@@ -257,7 +274,7 @@ fun Question() {
                 },
                 actions = {
                     IconButton(onClick = { /*TODO 아카이브에 해당 문제 등록*/ }) {
-                        Icon(Icons.Filled.Favorite, contentDescription = null)
+                        Icon(Filled.Favorite, contentDescription = null)
                     }
                 }
             )
@@ -476,7 +493,7 @@ private fun OnBoardingPreview() {
 }
 
 @Composable
-private fun Steps(names: List<String> = List(28){ "${it.toInt()+1}" }) {
+private fun Steps(names: List<String> = List(28){ "${it + 1}" }) {
     LazyColumn(modifier = Modifier.padding(vertical = 3.dp)) {
         items(items = names) {name ->
             Step(name = name)
