@@ -7,7 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -16,6 +15,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -23,7 +24,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.ContentAlpha
@@ -91,46 +94,30 @@ fun StaggerGrid(
         modifier = modifier,
         content = content
     ) { measurables, constraints ->
-        // Keep track of the width of each row
         val rowWidths = IntArray(rows)
-
-        // Keep track of the max height of each row
         val rowHeights = IntArray(rows)
 
-        // Don't constrain child views further, measure them with given constraints
-        // List of measured children
-        val placeables = measurables.mapIndexed { index, measureble ->
-            // Measure each child
-            val placeable = measureble.measure(constraints)
-
-            // Track the width and max height of each row
+        val placeables = measurables.mapIndexed { index, measurable ->
+            val placeable = measurable.measure(constraints)
             val row = index % rows
             rowWidths[row] += placeable.width
             rowHeights[row] = rowHeights[row].coerceAtLeast(placeable.height)
-
             placeable
         }
 
-        // Grid's width is the widest row
         val width = rowWidths.maxOrNull()
             ?.coerceIn(constraints.minWidth.rangeTo(constraints.maxWidth)) ?: constraints.minWidth
 
-        // Grid's height is the sum of the tallest element of each row
-        // coerced to the height constraints
         val height = rowHeights.sumOf { it }
             .coerceIn(constraints.minHeight.rangeTo(constraints.maxHeight))
 
-        // Y of each row, based on the height accumulation of previous rows
         val rowY = IntArray(rows)
         for (i in 1 until rows) {
             rowY[i] = rowY[i - 1] + rowHeights[i - 1]
         }
 
-        // Set the size of the parent layout
         layout(width, height) {
-            // x cord we have placed up to, per row
             val rowX = IntArray(rows)
-
             placeables.forEachIndexed { index, placeable ->
                 val row = index % rows
                 placeable.placeRelative(
@@ -147,43 +134,33 @@ fun StaggerGrid(
 private fun MyApp() {
     var shouldShowOnboarding by rememberSaveable { mutableStateOf(true) }
     if (shouldShowOnboarding) {
-        OnboardingScreen(onContinueClicked = {shouldShowOnboarding = false})
+        OnboardingScreen(onContinueClicked = { shouldShowOnboarding = false })
     } else {
-//        Greetings()
-//        Steps()
-//        PhotographerCard()
-//        Question()
-        ScrollingList()
+        // Here you can change which screen to display
+        Greetings()
     }
 }
 
 @Composable
 fun MyCustomColumn(
     modifier: Modifier = Modifier,
-    // custom layout attributes
     content: @Composable () -> Unit
 ) {
     Layout(
         modifier = modifier,
         content = content
     ) { measurables, constraints ->
-        // Don't constrain child views further, measure them with given constraints
-        // List of measured children
         val placeables = measurables.map { measurable ->
-            // Measure each child
             measurable.measure(constraints)
         }
-        // Track the y co-ord we have placed children up to
-        var yPosition = 0
 
-        // Set the size of the layout as big as it can
-        layout(constraints.maxWidth, constraints.maxHeight) {
-            //Place children in the parent layout
+        val width = (placeables.maxOfOrNull { it.width } ?: 0).coerceIn(constraints.minWidth, constraints.maxWidth)
+        val height = (placeables.sumOf { it.height }).coerceIn(constraints.minHeight, constraints.maxHeight)
+
+        layout(width, height) {
+            var yPosition = 0
             placeables.forEach { placeable ->
-                // Position item on the screen
                 placeable.placeRelative(x = 0, y = yPosition)
-
-                // Record the y co-ord placed up to
                 yPosition += placeable.height
             }
         }
@@ -193,74 +170,70 @@ fun MyCustomColumn(
 fun Modifier.firstBaselineToTop(
     firstBaseLineToTop: Dp
 ) = layout { measurable, constraints ->
-        val placeable = measurable.measure(constraints)
-
-        // Check the composable has a first baseline
-        check(placeable[FirstBaseline] != AlignmentLine.Unspecified)
-        val firstBaseLine = placeable[FirstBaseline]
-
-        // Height of the composable with padding - first baseline
-        val placeableY = firstBaseLineToTop.roundToPx() - firstBaseLine
-        val height = placeable.height + placeableY
-        layout(placeable.width, height) {
-            // Where the composable are placed
-            placeable.placeRelative(0, placeableY)
-        }
-    }
-
-@Preview
-@Composable
-fun TextWithPaddingToBaselinePreview() {
-    KankenNikyuComposeTheme() {
-        Text("Hi there!", Modifier.firstBaselineToTop(32.dp))
-    }
-}
-
-@Preview
-@Composable
-fun TextWithNormalPaddingPreview() {
-    KankenNikyuComposeTheme() {
-        Text("Hi there!", Modifier.padding(top = 32.dp))
+    val placeable = measurable.measure(constraints)
+    check(placeable[FirstBaseline] != AlignmentLine.Unspecified)
+    val firstBaseLine = placeable[FirstBaseline]
+    val placeableY = firstBaseLineToTop.roundToPx() - firstBaseLine
+    val height = placeable.height + placeableY
+    layout(placeable.width, height) {
+        placeable.placeRelative(0, placeableY)
     }
 }
 
 @Composable
 fun ScrollingList() {
     val listSize = 100
-    // We save the scrolling position with this state
     val scrollState = rememberLazyListState()
-    // We save the coroutine scope where our animated scroll will be executed
     val coroutineScope = rememberCoroutineScope()
-    
-    Row() {
-        Button(onClick = { 
-            coroutineScope.launch { 
-                // 0 is the first item index
-                scrollState.animateScrollToItem(0)
-            }
-        }) {
-            Text(text = "Scroll to the top")
-        }
-        Button(onClick = { 
-            coroutineScope.launch { 
-                // listSize -1 is the last index of the list
-                scrollState.animateScrollToItem(listSize - 1)
-            }
-        }) {
-            Text(text = "Scroll to the end")
-        }
-    }
 
-    LazyColumn(state = scrollState) {
-        items(100) {
-            ImageListItem(it)
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    coroutineScope.launch {
+                        scrollState.animateScrollToItem(0)
+                    }
+                }
+            ) {
+                Text(text = "Top")
+            }
+            Button(
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    coroutineScope.launch {
+                        scrollState.animateScrollToItem(listSize - 1)
+                    }
+                }
+            ) {
+                Text(text = "End")
+            }
+        }
+
+        LazyColumn(
+            state = scrollState,
+            modifier = Modifier.weight(1f)
+        ) {
+            items(listSize) {
+                ImageListItem(it)
+            }
         }
     }
 }
 
 @Composable
 fun ImageListItem(index: Int) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
         Image(
             painter = rememberAsyncImagePainter(
                 model = "https://developer.android.com/images/brand/Android_Robot.png"
@@ -268,7 +241,7 @@ fun ImageListItem(index: Int) {
             contentDescription = "Android Logo",
             modifier = Modifier.size(50.dp)
         )
-        Spacer(modifier = Modifier.width(10.dp))
+        Spacer(modifier = Modifier.width(16.dp))
         Text(text = "Item #$index", style = MaterialTheme.typography.subtitle1)
     }
 }
@@ -278,11 +251,9 @@ fun Question() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(text = "問題")
-                },
+                title = { Text(text = "問題") },
                 actions = {
-                    IconButton(onClick = { /*TODO 아카이브에 해당 문제 등록*/ }) {
+                    IconButton(onClick = { /* TODO: Bookmark */ }) {
                         Icon(Filled.Favorite, contentDescription = null)
                     }
                 }
@@ -292,73 +263,69 @@ fun Question() {
         BodyContent(
             Modifier
                 .padding(innerPadding)
-                .padding(8.dp))
+                .padding(16.dp)
+        )
     }
 }
 
 @Composable
 fun BodyContent(modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(text = "次の線が引かれている部分の読みをひらがなで記せ。")
-        Text(text = "旦夕")
-    }
-    MyCustomColumn(modifier.padding(8.dp)) {
-        Text("MyOwnColumn")
-        Text("places items")
-        Text("vertically.")
-        Text("We've done it by hand!")
-    }
-}
-
-@Preview
-@Composable
-fun QuestionPreview() {
-    KankenNikyuComposeTheme() {
-        Question()
+    val scrollState = rememberScrollState()
+    Column(
+        modifier = modifier.verticalScroll(scrollState)
+    ) {
+        Text(
+            text = "次の線が引かれている部分の読みをひらがなで記せ。",
+            style = MaterialTheme.typography.h6
+        )
+        Text(
+            text = "旦夕",
+            style = MaterialTheme.typography.h4,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+        
+        Spacer(modifier = Modifier.size(16.dp))
+        
+        MyCustomColumn {
+            Text("MyCustomColumn", style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.Bold)
+            Text("places items")
+            Text("vertically.")
+            Text("We've done it by hand!")
+        }
     }
 }
 
 @Composable
 fun PhotographerCard(modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .clickable(onClick = {/* Igonoring onClkick */ })
-            .padding(16.dp)
-    )
-    {
-        Surface(
-            modifier = Modifier.size(30.dp),
-            shape = CircleShape,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.2f)
+    Card(
+        elevation = 4.dp,
+        modifier = modifier
+            .padding(8.dp)
+            .clickable(onClick = { })
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            //Image goes here
-        }
-        Column(
-            modifier = Modifier
-                .padding(start = 8.dp)
-                .align(Alignment.CenterVertically)
-        ) {
-            Text(text = "cassiaさん", fontWeight = FontWeight.Bold)
-            // LocalContentAlpha is defining opacity level of its children
-            CompositionLocalProvider(LocalContentAlpha provides ContentAlpha.medium) {
-                Text("Last login: かなり前ではなかろう", style = MaterialTheme.typography.body2)
+            Surface(
+                modifier = Modifier.size(50.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.2f)
+            ) { }
+            Column(modifier = Modifier.padding(start = 12.dp)) {
+                Text(text = "cassiaさん", fontWeight = FontWeight.Bold)
+                CompositionLocalProvider(LocalContentAlpha provides ContentAlpha.medium) {
+                    Text("Last login: かなり前", style = MaterialTheme.typography.body2)
+                }
             }
         }
     }
 }
 
-@Preview
-@Composable
-fun PhotographerCaradPreview() {
-    KankenNikyuComposeTheme() {
-        PhotographerCard()
-    }
-}
-
 @Composable
 private fun Greetings(names: List<String> = listOf("本日の学習", "昨日の学習", "テーマ別学習")) {
-    Column(Modifier.padding(vertical = 4.dp)) {
-        for (name in names) {
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(vertical = 4.dp)) {
+        items(items = names) { name ->
             Greeting(name = name)
         }
     }
@@ -376,98 +343,73 @@ private fun Greeting(name: String) {
 
 @Composable
 private fun GreetingCardContent(name: String) {
-    var expanded by remember { mutableStateOf(false)}
-    Column(modifier = Modifier
-        .padding(24.dp)
-        .animateContentSize(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
+    var expanded by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .padding(24.dp)
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
             )
-        )) {
-        Row() {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(12.dp)
-            ) {
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(text = "Beat")
-                Text(text = "$name!")
+                Text(
+                    text = "$name!",
+                    style = MaterialTheme.typography.h4.copy(fontWeight = FontWeight.ExtraBold)
+                )
             }
-            OutlinedButton(
-                onClick = { expanded = !expanded }
-            ) {
+            OutlinedButton(onClick = { expanded = !expanded }) {
                 Text(if (expanded) "挟む" else "展開")
             }
         }
         if (expanded) {
-            val randomStepNoRange = (1..28)
-            val powerupList = listOf<String>(
-                "読み①", "読み②", "読み③", "読み④",
-                "書き取り①", "書き取り②", "書き取り③", "送りがな", "部首", "熟語の構成",
-                "四字熟語", "対義語・類義語", "同訓・同音異字", "誤字訂正"
-            )
-            when (name) {
-                "本日の学習" -> {
-                    Row() {
-                        Column() {
-                            Text(
-                                modifier = Modifier.padding(start = 12.dp),
-                                text = "ステップ ${randomStepNoRange.random()}"
-                            )
-                            Text(
-                                modifier = Modifier.padding(start = 12.dp),
-                                text = "パワーアップ ${powerupList.random()}"
-                            )
-                        }
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f),
-                            onClick = { /*TODO*/ }
-                        ) {
-                            Text(text = "学習開始")
-                        }
-                    }
-                }
-                "昨日の学習" -> {
-                    //TODO 전날 학습내용 모아둔 것 전부 전개
-                }
-                "テーマ別学習" -> {
-                    Row() {
-                        Button(
-                            modifier = Modifier.padding(6.dp),
-                            onClick = { /*TODO: Steps() 실행*/ }
-                        ) {
-                            Text(text = "ステップ")
-                        }
-                        Button(
-                            modifier = Modifier.padding(6.dp),
-                            onClick = { /*TODO*/ }) {
-                            Text(text = "ステップ 力だめし")
-                        }
-                    }
-                    Row() {
-                        Button(
-                            modifier = Modifier.padding(6.dp),
-                            onClick = { /*TODO*/ }) {
-                            Text(text = "パワーアップ")
-                        }
-                        Button(
-                            modifier = Modifier.padding(6.dp),
-                            onClick = { /*TODO*/ }) {
-                            Text(text = "総まとめ")
-                        }
-                    }
-                }
-            }
+            GreetingExpandedContent(name)
         }
     }
 }
 
-@Preview(showBackground = true, widthDp = 320)
 @Composable
-private fun DefaultPreview() {
-    KankenNikyuComposeTheme {
-        Greetings()
+private fun GreetingExpandedContent(name: String) {
+    val randomStepNoRange = (1..28)
+    val powerupList = listOf(
+        "読み①", "読み②", "読み③", "読み④",
+        "書き取り①", "書き取り②", "書き取り③", "送りがな", "部首", "熟語の構成",
+        "四字熟語", "対義語・類義語", "同訓・同音異字", "誤字訂正"
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    when (name) {
+        "本日の学習" -> {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "ステップ ${randomStepNoRange.random()}")
+                    Text(text = "パワーアップ ${powerupList.random()}")
+                }
+                Button(onClick = { /* TODO */ }) {
+                    Text(text = "学習開始")
+                }
+            }
+        }
+        "昨日の学習" -> {
+            Text(text = "昨日の学習内容がここに表示されます。")
+        }
+        "テーマ別学習" -> {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(modifier = Modifier.weight(1f), onClick = { }) { Text("ステップ") }
+                    Button(modifier = Modifier.weight(1f), onClick = { }) { Text("力だめし") }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(modifier = Modifier.weight(1f), onClick = { }) { Text("パワーアップ") }
+                    Button(modifier = Modifier.weight(1f), onClick = { }) { Text("総まとめ") }
+                }
+            }
+        }
     }
 }
 
@@ -479,32 +421,21 @@ private fun OnboardingScreen(onContinueClicked: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Beat 漢検2級!")
+            Text("Beat 漢検2級!", style = MaterialTheme.typography.h4)
             Button(
                 modifier = Modifier.padding(vertical = 24.dp),
                 onClick = onContinueClicked
-            ){
+            ) {
                 Text("スタート")
             }
         }
     }
 }
 
-@Preview(
-    showBackground = true,
-    widthDp = 320,
-    heightDp = 320)
 @Composable
-private fun OnBoardingPreview() {
-    KankenNikyuComposeTheme {
-        OnboardingScreen(onContinueClicked = {})
-    }
-}
-
-@Composable
-private fun Steps(names: List<String> = List(28){ "${it + 1}" }) {
-    LazyColumn(modifier = Modifier.padding(vertical = 3.dp)) {
-        items(items = names) {name ->
+private fun Steps(names: List<String> = List(28) { "${it + 1}" }) {
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(vertical = 4.dp)) {
+        items(items = names) { name ->
             Step(name = name)
         }
     }
@@ -516,76 +447,66 @@ private fun Step(name: String) {
         backgroundColor = MaterialTheme.colors.primary,
         modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp)
     ) {
-            StepCardContent(name)
+        StepCardContent(name)
     }
 }
 
 @Composable
 private fun StepCardContent(name: String) {
-    var expanded by remember { mutableStateOf(false)}
-    val extraPadding by animateDpAsState(
-        if (expanded) 36.dp else 0.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        )
-    )
-    Surface(
-        color = MaterialTheme.colors.primary,
-        modifier = Modifier.padding(vertical = 3.dp, horizontal = 6.dp)
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .padding(20.dp)
+            .animateContentSize()
     ) {
-        Row(modifier = Modifier.padding(20.dp)) {
-            Column(modifier = Modifier
-                .weight(1f)
-                .padding(bottom = extraPadding.coerceAtLeast(0.dp))
-            ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(text = "ステップ")
-                Text(text = name, style = MaterialTheme.typography.h4.copy(
-                    fontWeight = FontWeight.ExtraLight
-                    )
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.h4.copy(fontWeight = FontWeight.ExtraLight)
                 )
-                if (expanded) {
-                    when(name) {
-                        "1" -> {
-                            Text("挨　曖　宛　嵐　畏　萎　椅", Modifier.padding(top = 12.dp))
-                        }
-                        "2" -> {
-                            Text("彙　茨　咽　淫　唄　鬱　怨", Modifier.padding(top = 12.dp))
-                        }
-                        //...
-                        "28" -> {
-                            Text("瑠　呂　賂　弄　籠　麓　脇", Modifier.padding(top = 12.dp))
-                        }
-                    }
-                    OutlinedButton(
-                        modifier = Modifier.padding(vertical = 6.dp),
-                        onClick = { /*TODO: 화면이동*/ }
-                    ) {
-                        Text(text = "学習開始")
-                    }
-                }
             }
             IconButton(onClick = { expanded = !expanded }) {
                 Icon(
                     imageVector = if (expanded) Filled.KeyboardArrowUp else Filled.KeyboardArrowDown,
-                    contentDescription = if (expanded) {
-                        stringResource(id = R.string.show_less)
-                    } else {
-                        stringResource(id = R.string.show_more)
-                    }
+                    contentDescription = if (expanded) "Show less" else "Show more"
                 )
+            }
+        }
+        if (expanded) {
+            val kanjiText = when (name) {
+                "1" -> "挨　曖　宛　嵐　畏　萎　椅"
+                "2" -> "彙　茨　咽　淫　唄　鬱　怨"
+                "28" -> "瑠　呂　賂　弄　籠　麓　脇"
+                else -> "漢字のリストがここに表示されます。"
+            }
+            Text(kanjiText, Modifier.padding(top = 12.dp))
+            OutlinedButton(
+                modifier = Modifier.padding(top = 12.dp),
+                onClick = { /* TODO */ }
+            ) {
+                Text(text = "学習開始")
             }
         }
     }
 }
-@Preview(
-    showBackground = true,
-    widthDp = 320,
-    uiMode = UI_MODE_NIGHT_YES,
-    name = "DefaultPreviewDark")
+
+@Preview(showBackground = true, widthDp = 320)
 @Composable
-private fun StepsPreview() {
-    KankenNikyuComposeTheme {
-        Steps()
-    }
+fun DefaultPreview() {
+    KankenNikyuComposeTheme { Greetings() }
+}
+
+@Preview(showBackground = true, widthDp = 320, heightDp = 320)
+@Composable
+fun OnBoardingPreview() {
+    KankenNikyuComposeTheme { OnboardingScreen(onContinueClicked = {}) }
+}
+
+@Preview(showBackground = true, widthDp = 320, uiMode = UI_MODE_NIGHT_YES)
+@Composable
+fun StepsPreview() {
+    KankenNikyuComposeTheme { Steps() }
 }
